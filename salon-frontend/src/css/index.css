@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+:root {
+  --ab-black: #0a0a0a;
+  --ab-charcoal: #1c1c1c;
+  --ab-red: #d32f2f;
+  --ab-silver: #a3a3a3;
+  --ab-white: #ffffff;
+}
+
+body {
+  margin: 0;
+  background-color: var(--ab-black);
+  color: var(--ab-white);
+  font-family: 'Inter', sans-serif; 
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for a premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ab-black);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ab-charcoal);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ab-red);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Custom smooth fade and slide up animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Custom Scrollbar for Reviews */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #333333 transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px; /* Height of the horizontal scrollbar */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #333333;
+  border-radius: 10px;
+  border: 2px solid #111111; /* Creates a small padding effect */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #eab308; /* Turns gold when the user interacts with it */
+}
