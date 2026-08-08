@@ -3,6 +3,13 @@ const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
   clientName: { type: String, required: true },
   clientPhone: { type: String, required: true },
+  branchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch',
+    required: true
+  },
+  date: { type: String, required: true }, // NEW: Added Date
+  time: { type: String, required: true }, // NEW: Added Time
   items: [
     {
       productId: { 

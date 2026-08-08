@@ -1,14 +1,36 @@
 const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
-  serviceId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Category.services',
-    required: true 
+  // Changed from a single serviceId to an array of objects to support multiple selections
+  services: [
+    {
+      serviceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+      },
+      nameEn: { type: String, required: true },
+      nameAr: { type: String, required: true },
+      categoryTitleEn: { type: String, required: true } // Preserves grouping context (e.g., "Kids", "Hair & Beard")
+    }
+  ],
+  packageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Package',
+    default: null
+  },
+  isPackage: { 
+    type: Boolean, 
+    default: false 
   },
   professionalId: { 
     type: String, 
-    required: true 
+    ref: 'Professional',
+    required: false 
+  },
+  branchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch',
+    required: true
   },
   date: { type: String, required: true },
   time: { type: String, required: true },

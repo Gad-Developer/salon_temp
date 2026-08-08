@@ -4,8 +4,11 @@ const Appointment = require('../models/Appointment');
 exports.createAppointment = async (req, res) => {
   try {
     const { 
-      serviceId, 
+      services, 
+      packageId,
+      isPackage,
       professionalId, 
+      branchId,
       date, 
       time, 
       clientName, 
@@ -13,10 +16,12 @@ exports.createAppointment = async (req, res) => {
       totalPrice 
     } = req.body;
 
-    // Create and save the new booking
     const newAppointment = new Appointment({
-      serviceId,
-      professionalId,
+      services: isPackage ? [] : services,
+      packageId: isPackage ? packageId : null,
+      isPackage: isPackage || false,
+      professionalId: professionalId === 'any' ? null : professionalId,
+      branchId,
       date,
       time,
       clientName,
@@ -32,20 +37,24 @@ exports.createAppointment = async (req, res) => {
     });
   } catch (error) {
     console.error("Booking Error:", error);
-    res.status(500).json({ message: 'Failed to create appointment', error });
+    res.status(500).json({ message: 'Failed to create appointment', error: error.message });
   }
 };
 
-// GET /api/appointments (For the Admin Dashboard later)
+// GET /api/appointments (Populated with reference names for Admin Dashboard)
 exports.getAppointments = async (req, res) => {
   try {
-    const appointments = await Appointment.find().sort({ createdAt: -1 });
+    const appointments = await Appointment.find()
+      .populate('branchId', 'nameEn nameAr')
+      .populate('professionalId', 'nameEn nameAr')
+      .populate('packageId', 'nameEn nameAr')
+      .sort({ createdAt: -1 });
+      
     res.status(200).json(appointments);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch appointments', error });
+    res.status(500).json({ message: 'Failed to fetch appointments', error: error.message });
   }
 };
-
 
 // PATCH /api/appointments/:id/status
 exports.updateAppointmentStatus = async (req, res) => {
@@ -61,7 +70,9 @@ exports.updateAppointmentStatus = async (req, res) => {
       req.params.id, 
       { status }, 
       { new: true }
-    );
+    ).populate('branchId', 'nameEn nameAr')
+     .populate('professionalId', 'nameEn nameAr')
+     .populate('packageId', 'nameEn nameAr');
 
     if (!updatedAppointment) {
       return res.status(404).json({ message: 'Appointment not found' });

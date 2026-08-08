@@ -1,18 +1,17 @@
 const express = require('express');
 const router = express.Router();
-// Import the new updateOrderStatus function
-const { createOrder, getOrders, updateOrderStatus, deleteOrder } = require('../controllers/orderController');
+const { createOrder, getOrders, updateOrderStatus, updateOrderDetails, deleteOrder } = require('../controllers/orderController');
 
 router.route('/')
   .get(getOrders)
   .post(createOrder);
 
-// NEW: Route to update specific order status
 router.route('/:id/status')
   .patch(updateOrderStatus);
 
-// NEW: Route to delete a specific order
+// UPDATED: Added updateOrderDetails to the /:id patch route
 router.route('/:id')
+  .patch(updateOrderDetails)
   .delete(deleteOrder);
 
 module.exports = router;
