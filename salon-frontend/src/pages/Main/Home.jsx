@@ -12,7 +12,6 @@ import ProductsSection from '../../components/ProductsSection';
 const PackageCard = ({ pkg, lang, t }) => {
   const [currentImg, setCurrentImg] = useState(0);
   
-  // Safely extract the valid image arrays
   const validImages = pkg.images && pkg.images.length > 0 ? pkg.images : [[
     "https://images.unsplash.com/photo-1622288432450-277d0fce04b4?auto=format&fit=crop&w=300&q=80",
     "https://images.unsplash.com/photo-1622288432450-277d0fce04b4?auto=format&fit=crop&w=500&q=80",
@@ -22,19 +21,15 @@ const PackageCard = ({ pkg, lang, t }) => {
   const nextImg = (e) => { e.stopPropagation(); setCurrentImg((prev) => (prev === validImages.length - 1 ? 0 : prev + 1)); };
   const prevImg = (e) => { e.stopPropagation(); setCurrentImg((prev) => (prev === 0 ? validImages.length - 1 : prev - 1)); };
 
-  // Current image set (Array of 3 URLs: 300w, 500w, 700w)
   const imageSet = validImages[currentImg];
-  const fallbackSrc = imageSet[1] || imageSet[0]; // Default to 500w or whatever is available
+  const fallbackSrc = imageSet[1] || imageSet[0]; 
   
-  // Construct the srcset string if we have all 3 resolutions
-  const srcSetString = imageSet.length >= 3 
+  const srcSetString = imageSet.length >= 3  
     ? `${imageSet[0]} 300w, ${imageSet[1]} 500w, ${imageSet[2]} 700w` 
     : undefined;
 
   return (
     <div className="w-full h-[350px] sm:h-[450px] lg:h-[500px] rounded-2xl overflow-hidden relative group cursor-pointer border border-[#2a2a2a] bg-black">
-      
-      {/* Background Image using srcSet and sizes */}
       <div className="absolute inset-0">
         <img 
           src={fallbackSrc} 
@@ -46,9 +41,7 @@ const PackageCard = ({ pkg, lang, t }) => {
         />
       </div>
 
-      {/* Floating Info Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent p-4 lg:p-6 flex flex-col justify-end transition-all duration-500 group-hover:bg-black/30">
-        
         {validImages.length > 1 && (
           <div className="absolute top-4 left-4 right-4 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
              <button onClick={prevImg} className="bg-white/20 hover:bg-[#d32f2f] text-white p-2 rounded-full transition-all"><ChevronLeft size={16} /></button>
@@ -59,8 +52,6 @@ const PackageCard = ({ pkg, lang, t }) => {
         <div className="transition-all duration-500">
           <div className="flex justify-between items-end mb-2 sm:mb-3 gap-2">
             <h3 className="text-lg lg:text-xl font-black text-white uppercase leading-tight">{lang === 'ar' ? pkg.nameAr : pkg.nameEn}</h3>
-            
-            {/* Dynamic Discount Pricing for Packages */}
             {pkg.oldPrice && pkg.oldPrice > pkg.price ? (
               <div className="flex flex-col items-end leading-none">
                 <span className="text-white/70 font-medium text-[10px] sm:text-xs line-through mb-1">
@@ -123,6 +114,7 @@ const Home = () => {
 
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
   const scrollRef = useRef(null);
+  const isScrollingForward = useRef(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -132,7 +124,7 @@ const Home = () => {
           axios.get('/api/professionals'),
           axios.get('/api/packages'),
           axios.get('/api/branches'),
-          axios.get('/api/reviews').catch(() => ({ data: [] })) // Safe fallback if endpoint is new
+          axios.get('/api/reviews').catch(() => ({ data: [] }))
         ]);
         
         setCategories(catRes.data);
@@ -158,24 +150,117 @@ const Home = () => {
     setCurrentPage(1);
   }, [activeTab]);
 
+  // Highlight calculations centered around the middle of the viewport
   useEffect(() => {
     const handleScrollZoom = () => {
-      if (!scrollRef.current) return;
+      if (!scrollRef.current || scrollRef.current.children.length === 0) return;
       
-      const scrollPosition = Math.abs(scrollRef.current.scrollLeft);
-      const cardWidth = scrollRef.current.children[0]?.offsetWidth || 300;
-      const gap = 24; 
+      const container = scrollRef.current;
+      const children = container.children;
       
-      const centerIndex = Math.round(scrollPosition / (cardWidth + gap));
-      setActiveReviewIndex(centerIndex);
+      // Find the absolute horizontal centerline of the container on the viewport
+      const containerRect = container.getBoundingClientRect();
+      const containerCenter = containerRect.left + (containerRect.width / 2);
+      
+      let closestIndex = 0;
+      let minDistance = Infinity;
+      
+      // Check each card to see which one is physically closest to the centerline
+      for (let i = 0; i < children.length; i++) {
+        // Skip our spacing spacer elements if any are explicitly added
+        if (children[i].getAttribute('aria-hidden') === 'true') continue;
+        
+        const cardRect = children[i].getBoundingClientRect();
+        const cardCenter = cardRect.left + (cardRect.width / 2);
+        const distance = Math.abs(containerCenter - cardCenter);
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = i;
+        }
+      }
+      
+      setActiveReviewIndex(closestIndex);
     };
 
     const container = scrollRef.current;
     if (container) {
-      container.addEventListener('scroll', handleScrollZoom);
+      container.addEventListener('scroll', handleScrollZoom, { passive: true });
+      // Run right away to highlight the first card on load
+      setTimeout(handleScrollZoom, 100);
       return () => container.removeEventListener('scroll', handleScrollZoom);
     }
   }, [reviews]);
+
+  // 2. Controlled Smooth Auto-Scroll Interval Loop (2-Second Delay)
+  useEffect(() => {
+    if (reviews.length <= 1 || !scrollRef.current) return;
+
+    // Custom smooth scroll implementation to slow down the sliding speed
+    const customSmoothScroll = (element, targetOffset, duration) => {
+      const start = element.scrollLeft;
+      const change = targetOffset - start;
+      let startTime = null;
+
+      const animateScroll = (currentTime) => {
+        if (!startTime) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        
+        // Progress percentage (0 to 1)
+        const progress = Math.min(timeElapsed / duration, 1);
+        
+        // Easing function: Ease-In-Out Quad for a velvety start and slow finish
+        const easeInOutQuad = progress < 0.5 
+          ? 2 * progress * progress 
+          : -1 + (4 - 2 * progress) * progress;
+
+        element.scrollLeft = start + change * easeInOutQuad;
+
+        if (timeElapsed < duration) {
+          requestAnimationFrame(animateScroll);
+        }
+      };
+
+      requestAnimationFrame(animateScroll);
+    };
+
+    const intervalId = setInterval(() => {
+      const container = scrollRef.current;
+      const cardWidth = container.children[0].offsetWidth;
+      const gap = 24;
+      const totalStepWidth = cardWidth + gap;
+
+      const currentScroll = container.scrollLeft;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      const isRtl = lang === 'ar';
+      
+      // Target transition execution duration in milliseconds
+      // CHANGE THIS: Higher number = slower slide motion (e.g., 800ms or 1000ms)
+      const slideDuration = 800; 
+
+      if (isScrollingForward.current) {
+        let nextScrollTarget = isRtl ? currentScroll - totalStepWidth : currentScroll + totalStepWidth;
+        
+        if ((!isRtl && nextScrollTarget >= maxScroll - 20) || (isRtl && Math.abs(nextScrollTarget) >= maxScroll - 20)) {
+          isScrollingForward.current = false;
+        }
+
+        const step = isRtl ? -totalStepWidth : totalStepWidth;
+        customSmoothScroll(container, currentScroll + step, slideDuration);
+      } else {
+        let nextScrollTarget = isRtl ? currentScroll + totalStepWidth : currentScroll - totalStepWidth;
+        
+        if ((!isRtl && nextScrollTarget <= 20) || (isRtl && nextScrollTarget >= -20)) {
+          isScrollingForward.current = true;
+        }
+
+        const step = isRtl ? totalStepWidth : -totalStepWidth;
+        customSmoothScroll(container, currentScroll + step, slideDuration);
+      }
+    }, 2000); // Wait 2 seconds between card movements
+
+    return () => clearInterval(intervalId);
+  }, [reviews, lang]);
 
   const handleScroll = (targetId) => {
     const target = document.getElementById(targetId);
@@ -184,9 +269,13 @@ const Home = () => {
     }
   };
 
+  const standardCategories = categories.filter(cat => cat.titleEn.toLowerCase() !== 'kids');
+  const kidsCategory = categories.find(cat => cat.titleEn.toLowerCase() === 'kids');
+  const kidsServices = kidsCategory ? kidsCategory.services : [];
+
   const getDisplayServices = () => {
-    if (activeTab === 'All') return categories.flatMap(cat => cat.services);
-    const selectedCategory = categories.find(cat => (lang === 'ar' ? cat.titleAr : cat.titleEn) === activeTab);
+    if (activeTab === 'All') return standardCategories.flatMap(cat => cat.services);
+    const selectedCategory = standardCategories.find(cat => (lang === 'ar' ? cat.titleAr : cat.titleEn) === activeTab);
     return selectedCategory ? selectedCategory.services : [];
   };
 
@@ -246,7 +335,7 @@ const Home = () => {
                   <button onClick={() => setActiveTab('All')} className={`px-5 py-2 rounded-full font-bold text-xs transition-all border ${activeTab === 'All' ? 'bg-[#d32f2f] border-[#d32f2f] text-white' : 'bg-transparent border-[#333] text-[#a3a3a3] hover:border-[#666] hover:text-white'}`}>
                     {t('filter_all')}
                   </button>
-                  {categories.map((cat) => {
+                  {standardCategories.map((cat) => {
                     const tabName = lang === 'ar' ? cat.titleAr : cat.titleEn;
                     return (
                       <button key={cat._id} onClick={() => setActiveTab(tabName)} className={`px-5 py-2 rounded-full font-bold text-xs transition-all border ${activeTab === tabName ? 'bg-[#d32f2f] border-[#d32f2f] text-white' : 'bg-transparent border-[#333] text-[#a3a3a3] hover:border-[#666] hover:text-white'}`}>
@@ -258,12 +347,13 @@ const Home = () => {
 
                 <div key={`${activeTab}-${currentPage}`} className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 min-h-[400px] animate-fade-in-up">
                   {currentServices.map((srv) => (
-                    <div key={srv._id} className="bg-[#141414] rounded-xl border border-[#2a2a2a] overflow-hidden hover:border-[#d32f2f] transition-all group flex flex-row h-32 sm:h-40">
+                    // 1. INCREASED HEIGHT: Changed 'h-32 sm:h-40' to 'h-40 sm:h-48 lg:h-52'
+                    <div key={srv._id} className="bg-[#141414] rounded-xl border border-[#2a2a2a] overflow-hidden hover:border-[#d32f2f] transition-all group flex flex-row h-40 sm:h-48 lg:h-52">
                                       
-                      {/* Left Side: 50% Image */}
+                      {/* Left Side: Image */}
                       <div className="w-2/5 sm:w-1/2 h-full relative overflow-hidden bg-black">
                         <img 
-                          src={srv.image || "https://images.unsplash.com/photo-[PLACEHOLDER]?auto=format&fit=crop&w=400&q=80"} 
+                          src={srv.image || "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=80"} 
                           alt={lang === 'ar' ? srv.nameAr : srv.nameEn}
                           className="w-full h-full object-cover group-hover:scale-110 transition-all duration-500"
                           loading="lazy"
@@ -271,20 +361,26 @@ const Home = () => {
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-[#141414]"></div>
                       </div>
 
-                      {/* Right Side: 50% Text Details */}
-                      <div className="w-3/5 sm:w-1/2 p-3 sm:p-5 flex flex-col justify-center">
-                        <h3 className="text-sm sm:text-base font-bold text-white uppercase group-hover:text-[#d32f2f] transition-colors mb-2 line-clamp-2 leading-tight">
-                          {lang === 'ar' ? srv.nameAr : srv.nameEn}
-                        </h3>
+                      {/* Right Side: Text Details */}
+                      {/* 2. SPACING FIX: Changed 'justify-center' to 'justify-between' */}
+                      <div className="w-3/5 sm:w-1/2 p-3 sm:p-5 flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-sm sm:text-base font-bold text-white uppercase group-hover:text-[#d32f2f] transition-colors mb-1 line-clamp-1 leading-tight">
+                            {lang === 'ar' ? srv.nameAr : srv.nameEn}
+                          </h3>
+                          
+                          <p className="text-[#a3a3a3] text-[10px] sm:text-xs line-clamp-2 leading-relaxed mb-3">
+                            {lang === 'ar' ? srv.descriptionAr : srv.descriptionEn}
+                          </p>
+                        </div>
                         
                         <div className="mt-auto flex flex-col gap-2">
-                           <div className="flex justify-between items-end">
+                          <div className="flex justify-between items-end">
                               <span className="text-[#a3a3a3] text-[10px] sm:text-xs flex items-center gap-1.5 pb-0.5">
                                 <Clock size={12} className="text-[#d32f2f]" />
                                 {srv.durationMinutes} {t('mins')}
                               </span>
                               
-                              {/* Dynamic Pricing Logic */}
                               {srv.originalPrice && srv.originalPrice > srv.price ? (
                                 <div className="flex flex-col items-end leading-none">
                                   <span className="text-[#a3a3a3] text-[10px] line-through mb-1">
@@ -300,13 +396,12 @@ const Home = () => {
                                 </span>
                               )}
 
-                           </div>
-                           <Link to="/book" className="block w-full text-center bg-[#1f1f1f] text-[#a3a3a3] py-1.5 sm:py-2 rounded font-bold text-[10px] uppercase tracking-wider hover:bg-[#d32f2f] hover:text-white transition-colors border border-[#333] hover:border-[#d32f2f]">
-                             {t('book_now_card')}
-                           </Link>
+                          </div>
+                          <Link to="/book" className="block w-full text-center bg-[#1f1f1f] text-[#a3a3a3] py-1.5 sm:py-2 rounded font-bold text-[10px] uppercase tracking-wider hover:bg-[#d32f2f] hover:text-white transition-colors border border-[#333] hover:border-[#d32f2f]">
+                            {t('book_now_card')}
+                          </Link>
                         </div>
                       </div>
-
                     </div>
                   ))}
                 </div>
@@ -330,6 +425,73 @@ const Home = () => {
             )}
          </div>
       </section>
+
+      {/* 2.5 KIDS SERVICES SECTION (DEDICATED UI) */}
+      {kidsServices.length > 0 && !isLoading && (
+        <section className="py-16 px-6 bg-[#111] border-t border-[#1f1f1f]" id="kids">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-widest mb-3 text-[#3b82f6]">
+                {t('kids_title')}
+              </h2>
+              <div className="w-16 h-1 bg-[#3b82f6] mx-auto rounded-full"></div>
+              <p className="text-[#a3a3a3] text-sm md:text-base mt-4 max-w-2xl mx-auto">
+                {t('kids_subtitle')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+              {kidsServices.map((srv) => (
+                <div key={srv._id} className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] overflow-hidden hover:border-[#3b82f6] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all duration-300 group flex flex-col h-auto">
+                  
+                  {/* Image with Blue Gradient Overlay */}
+                  <div className="w-full h-48 relative overflow-hidden bg-black">
+                    <img 
+                      src={srv.image || "https://images.unsplash.com/photo-1595455850942-0f04c633a69c?auto=format&fit=crop&w=600&q=80"} 
+                      alt={lang === 'ar' ? srv.nameAr : srv.nameEn}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-transparent"></div>
+                    <div className="absolute top-3 right-3 bg-[#3b82f6] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Kids
+                    </div>
+                  </div>
+
+                  {/* Text Details */}
+                  <div className="p-5 flex flex-col flex-grow justify-between">
+                    <div>
+                      <h3 className="text-lg font-black text-white uppercase group-hover:text-[#3b82f6] transition-colors mb-2 leading-tight">
+                        {lang === 'ar' ? srv.nameAr : srv.nameEn}
+                      </h3>
+                      <p className="text-[#a3a3a3] text-xs leading-relaxed mb-4 line-clamp-2">
+                        {lang === 'ar' ? srv.descriptionAr : srv.descriptionEn}
+                      </p>
+                    </div>
+                    
+                    <div className="mt-auto">
+                      <div className="flex justify-between items-end mb-4">
+                        <span className="text-[#a3a3a3] text-xs flex items-center gap-1.5 font-medium">
+                          <Clock size={14} className="text-[#3b82f6]" />
+                          {srv.durationMinutes} {t('mins')}
+                        </span>
+                        
+                        <span className="text-xl font-black text-white">
+                          {srv.price} <span className="text-[10px] text-[#3b82f6] font-bold">{t('currency')}</span>
+                        </span>
+                      </div>
+                      
+                      <Link to="/book" className="block w-full text-center bg-transparent text-[#3b82f6] py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-[#3b82f6] hover:text-white transition-all border border-[#3b82f6]">
+                        {t('book_now_card')}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 3. SPECIAL PACKAGES SECTION */}
       <section className="py-16 px-4 sm:px-6 bg-[#0a0a0a]" id="packages">
@@ -405,8 +567,8 @@ const Home = () => {
 
       {/* 5. REVIEWS SECTION */}
       <section id="reviews" className="py-24 bg-[#111] border-t border-[#1f1f1f] overflow-hidden">
-        <div className="max-w-[1400px] mx-auto px-6 text-center">
-          <div className="mb-16">
+        <div className="max-w-[1400px] mx-auto text-center">
+          <div className="mb-16 px-6">
             <h2 className="text-3xl md:text-4xl font-black uppercase tracking-widest mb-3">
               {t('reviews_title')}
             </h2>
@@ -417,17 +579,17 @@ const Home = () => {
           {/* Horizontal Scroll Container */}
           <div 
             ref={scrollRef}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 pt-8 px-4 sm:px-10 custom-scrollbar"
+            className="flex overflow-x-auto gap-6 pb-8 pt-8 px-[calc(50vw-212px)] pointer-events-none select-none scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {reviews.map((review, index) => {
               const isCenter = index === activeReviewIndex;
               return (
                 <div 
                   key={review._id || index} 
-                  className={`min-w-[85vw] sm:min-w-[400px] lg:min-w-[calc(33.333%-1rem)] snap-center bg-[#141414] p-8 rounded-2xl border text-start transition-all duration-500 ease-out flex flex-col justify-between ${
+                  className={`min-w-[350px] sm:min-w-[400px] snap-center bg-[#141414] p-8 rounded-2xl border text-start transition-all duration-500 ease-out flex flex-col justify-between ${
                     isCenter 
-                      ? 'scale-105 shadow-[0_10px_40px_rgba(234,179,8,0.15)] border-[#eab308]/50 z-10' 
-                      : 'scale-95 opacity-50 hover:opacity-80 border-[#2a2a2a]'
+                      ? 'scale-105 shadow-[0_10px_40px_rgba(211,47,47,0.15)] border-[#d32f2f] z-10 opacity-100' 
+                      : 'scale-95 opacity-30 border-[#2a2a2a]'
                   }`}
                 >
                   <div>
@@ -463,7 +625,7 @@ const Home = () => {
             })}
             
             {reviews.length === 0 && !isLoading && (
-              <div className="w-full text-center text-[#555] text-sm py-10 border border-dashed border-[#333] rounded-xl">
+              <div className="w-full text-center text-[#555] text-sm py-10 border border-dashed border-[#333] rounded-xl mx-6">
                 No reviews yet. Be the first!
               </div>
             )}
@@ -569,7 +731,6 @@ const Home = () => {
       <footer className="bg-[#050505] pt-20 pb-8 border-t border-[#1a1a1a]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-            
             <div className="lg:col-span-1 text-start">
               <Link to="/" className="text-2xl font-black tracking-widest text-white mb-5 flex items-center gap-1">
                 NAME <span className="text-[#d32f2f]">SALON</span>
@@ -625,39 +786,31 @@ const Home = () => {
                 {t('follow_us')}
               </h4>
               <div className="flex gap-3">
-                <a 
-                  href="https://facebook.com/absaloon" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] hover:text-[#1877F2] hover:border-[#1877F2] hover:shadow-[0_0_10px_rgba(24,119,242,0.3)] hover:-translate-y-1 transition-all duration-300"
-                >
+                <a href="https://facebook.com/absaloon" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] hover:text-[#1877F2] hover:border-[#1877F2] hover:shadow-[0_0_10px_rgba(24,119,242,0.3)] hover:-translate-y-1 transition-all duration-300">
                   <FaFacebook size={18} />
                 </a>
-                <a 
-                  href="https://www.instagram.com/ab.salonn" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] hover:text-[#E1306C] hover:border-[#E1306C] hover:shadow-[0_0_10px_rgba(225,48,108,0.3)] hover:-translate-y-1 transition-all duration-300"
-                >
+                <a href="https://www.instagram.com/ab.salonn" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] hover:text-[#E1306C] hover:border-[#E1306C] hover:shadow-[0_0_10px_rgba(225,48,108,0.3)] hover:-translate-y-1 transition-all duration-300">
                   <FaInstagram size={18} />
                 </a>
-                <a 
-                  href="https://www.tiktok.com/@ab.salon6" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] hover:text-white hover:border-white hover:shadow-[0_0_10px_rgba(255,255,255,0.2)] hover:-translate-y-1 transition-all duration-300"
-                >
+                <a href="https://www.tiktok.com/@ab.salon6" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2a2a2a] flex items-center justify-center text-[#a3a3a3] hover:text-white hover:border-white hover:shadow-[0_0_10px_rgba(255,255,255,0.2)] hover:-translate-y-1 transition-all duration-300">
                   <FaTiktok size={18} />
                 </a>
               </div>
+              
+            {/* NEW SUB-FOOTER NOTICE CONTAINER */}
+              <div className="pt-2 border-t border-[#1a1a1a] max-w-xs">
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  {t('cancel_notice')}
+                  <span className="text-white font-semibold block mt-1 hover:text-[#d32f2f] transition-colors" dir="ltr">
+                    +20 11* *** ****
+                  </span>
+                </p>
+              </div>
             </div>
-
           </div>
 
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-[#1a1a1a] text-[#555] text-xs" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
             <p>© {new Date().getFullYear()} NAME Salon. {t('all_rights')}</p>
-            <div className="flex gap-6 mt-4 md:mt-0">
-            </div>
           </div>
         </div>
       </footer>

@@ -84,7 +84,6 @@ export const translations = {
     all_rights: "All rights reserved.",
     nav_packages: "Packages",
     nav_professionals: "Professionals",
-    nav_reviews: "Reviews",
     products_title: "Hair Care Products",
     no_products: "No products currently available.",
     order_now: "Order Now",
@@ -126,6 +125,9 @@ export const translations = {
     mark_cancelled: "Cancel",
     client_info: "Client Info",
     no_data: "No data available currently.",
+    kids_title: "Kids Grooming",
+    kids_subtitle: "Specialized care, gentle tools, and stylish cuts for the little ones.",
+    cancel_notice: "To cancel any appointment, please feel free to talk to us at this WhatsApp number: ",
   },
   ar: {
     nav_book: "احجز الآن",
@@ -212,7 +214,6 @@ export const translations = {
     all_rights: "جميع الحقوق محفوظة.",
     nav_packages: "الباقات",
     nav_professionals: "فريق العمل",
-    nav_reviews: "الآراء",
     products_title: "منتجات العناية",
     no_products: "لا توجد منتجات متاحة حالياً.",
     order_now: "اطلب الان",
@@ -253,6 +254,9 @@ export const translations = {
     mark_completed: "إنهاء",
     mark_cancelled: "إلغاء",
     client_info: "بيانات العميل",
-    no_data: "لا توجد بيانات متاحة حالياً.",  
+    no_data: "لا توجد بيانات متاحة حالياً.",
+    kids_title: "عناية الأطفال",
+    kids_subtitle: "عناية متخصصة، أدوات لطيفة، وقصات أنيقة لأحبائنا الصغار.",
+    cancel_notice: "لإلغاء أي موعد، يرجى عدم التردد في التواصل معنا عبر رقم الواتساب التالي: ",
   }
 };
