@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  CLIENT_URL: ${{ secrets.CLIENT_URL }}
 
 jobs:
   Deploy:
@@ -38,7 +40,7 @@ jobs:
         run: |
           git config user.name "Deployment Bot"
           git config user.email "${{ secrets.VERCEL_OWNER_EMAIL }}"
-          git commit --amend --no-edit --author="Deployment Bot <${{ secrets.VERCEL_OWNER_EMAIL }}>"
+          git commit --amend --no-edit --allow-empty --author="Deployment Bot <${{ secrets.VERCEL_OWNER_EMAIL }}>"
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
