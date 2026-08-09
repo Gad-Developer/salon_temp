@@ -22,11 +22,15 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Blocked by CORS'));
+    // Allow requests with no origin (curl, mobile apps)
+    if (!origin) return callback(null, true);
+
+    // Allow exact matches in allowedOrigins OR any Vercel deployment domain
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
     }
+
+    return callback(new Error('Blocked by CORS'));
   },
   credentials: true
 }));
