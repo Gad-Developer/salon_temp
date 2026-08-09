@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,6 +33,12 @@ jobs:
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
+
+      - name: Override Commit Author for Vercel
+        run: |
+          git config user.name "Deployment Bot"
+          git config user.email "${{ secrets.VERCEL_OWNER_EMAIL }}"
+          git commit --amend --no-edit --author="Deployment Bot <${{ secrets.VERCEL_OWNER_EMAIL }}>"
 
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
