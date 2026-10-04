@@ -5,8 +5,10 @@ const professionalSchema = new mongoose.Schema({
   nameAr: { type: String, required: true },
   roleEn: { type: String, required: true },
   roleAr: { type: String, required: true },
-  avatar: { type: String, default: "" }, // Can hold a URL or path to an image later
-  isActive: { type: Boolean, default: true }
+  avatar: { type: String, default: "" },
+  isActive: { type: Boolean, default: true },
+  // NEW: Link professionals to specific physical locations
+  assignedBranches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Branch' }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Professional', professionalSchema);

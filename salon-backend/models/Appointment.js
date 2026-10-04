@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
-  // Changed from a single serviceId to an array of objects to support multiple selections
   services: [
     {
       serviceId: {
@@ -10,7 +9,7 @@ const appointmentSchema = new mongoose.Schema({
       },
       nameEn: { type: String, required: true },
       nameAr: { type: String, required: true },
-      categoryTitleEn: { type: String, required: true } // Preserves grouping context (e.g., "Kids", "Hair & Beard")
+      categoryTitleEn: { type: String, required: true }
     }
   ],
   packageId: {
@@ -22,10 +21,11 @@ const appointmentSchema = new mongoose.Schema({
     type: Boolean, 
     default: false 
   },
+  // CHANGED: From String to ObjectId to properly reference the Professional Model
   professionalId: { 
-    type: String, 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Professional',
-    required: false 
+    default: null
   },
   branchId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -41,7 +41,14 @@ const appointmentSchema = new mongoose.Schema({
     type: String, 
     enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'],
     default: 'Pending' 
-  }
+  },
+  // NEW: Audit log for status changes and reassignments
+  auditLog: [{
+    action: { type: String, required: true }, // e.g., "Status Changed to Completed", "Professional Reassigned"
+    note: { type: String, required: true },   // The mandatory justification
+    timestamp: { type: Date, default: Date.now },
+    adminName: { type: String, default: 'Admin' } // Hardcoded for now until Auth is built
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

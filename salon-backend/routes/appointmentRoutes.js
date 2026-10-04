@@ -1,18 +1,30 @@
 const express = require('express');
 const router = express.Router();
 // Import your existing methods plus the new one
-const { createAppointment, getAppointments, updateAppointmentStatus, updateAppointmentDetails, deleteAppointment } = require('../controllers/appointmentController');
+const { 
+  createAppointment, 
+  getAppointments, 
+  updateAppointmentStatus, 
+  updateAppointmentDetails, 
+  deleteAppointment,
+  assignProfessional // NEW
+} = require('../controllers/appointmentController');
+
+const { protect } = require('../middleware/authMiddleware');
 
 router.route('/')
   .get(getAppointments)
   .post(createAppointment);
 
-// NEW: Route to update specific appointment status
+// Route to update specific appointment status
 router.route('/:id/status')
-  .patch(updateAppointmentStatus);
+  .patch(protect, updateAppointmentStatus);
+
+router.route('/:id/assign')
+  .patch(protect, assignProfessional);
 
 router.route('/:id')
-  .patch(updateAppointmentDetails)
-  .delete(deleteAppointment);
+  .patch(protect, updateAppointmentDetails)
+  .delete(protect, deleteAppointment);
 
 module.exports = router;

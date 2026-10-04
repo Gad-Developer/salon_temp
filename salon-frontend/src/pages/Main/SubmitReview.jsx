@@ -14,11 +14,10 @@ const SubmitReview = () => {
 
   const memberType = 'Customer'; 
 
-  // Step 1: Actually verify the code with the database
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     if (code.length < 5) {
-      setError(lang === 'ar' ? 'الرجاء إدخال كود صحيح' : 'Please enter a valid code');
+      setError(t('error_invalid_code_length'));
       return;
     }
     
@@ -26,15 +25,14 @@ const SubmitReview = () => {
     setError('');
     try {
       await axios.post('/api/reviews/validate-code', { code });
-      setStep(2); // Only move to step 2 if the server says it's valid
+      setStep(2); 
     } catch (err) {
-      setError(err.response?.data?.error || (lang === 'ar' ? 'كود غير صالح' : 'Invalid code'));
+      setError(t('error_invalid_code'));
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 2: Submit the final review text
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -47,7 +45,7 @@ const SubmitReview = () => {
       });
       setStep(3);
     } catch (err) {
-      setError(err.response?.data?.error || (lang === 'ar' ? 'فشل إرسال التقييم' : 'Failed to submit review.'));
+      setError(t('error_submit_failed'));
       if (err.response?.status === 400) setStep(1); 
     } finally {
       setLoading(false);
@@ -84,7 +82,7 @@ const SubmitReview = () => {
               />
               <p className="text-[#555] text-xs text-center mt-3 leading-relaxed">{t('code_help')}</p>
             </div>
-            <button disabled={loading} className="w-full bg-[#d32f2f] text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all">
+            <button disabled={loading} className="w-full bg-[#d32f2f] text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all border border-[#d32f2f]">
               {loading ? t('verifying') : t('verify_btn')}
             </button>
           </form>

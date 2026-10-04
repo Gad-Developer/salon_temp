@@ -1,122 +1,186 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Lock, Unlock, KeyRound, Copy, CheckCircle2 } from 'lucide-react';
+import { KeyRound, Copy, CheckCircle2, MessageSquare, Star, Trash2, Loader2 } from 'lucide-react';
+import { useLanguage } from '../../utils/LanguageContext';
+import { useAdminAuth } from '../../context/AdminContext';
 
 const StaffPortal = () => {
-  const [pin, setPin] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { t, lang } = useLanguage();
+  const { admin } = useAdminAuth();
   const [error, setError] = useState('');
-  
-  const [generatedCode, setGeneratedCode] = useState('');
+  const [activeCodes, setActiveCodes] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const CORRECT_PIN = import.meta.env.VITE_STAFF_PIN || '778899'; // Fallback for testing
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (pin === CORRECT_PIN) {
-      setIsAuthenticated(true);
-      setError('');
-    } else {
-      setError('Invalid PIN. Access Denied.');
-      setPin('');
+  const fetchData = async () => {
+    try {
+      const [codesRes, reviewsRes] = await Promise.all([
+        axios.get('/api/reviews/active-codes'),
+        axios.get('/api/reviews')
+      ]);
+      if (codesRes.data.codes) setActiveCodes(codesRes.data.codes);
+      if (reviewsRes.data) setReviews(reviewsRes.data);
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+    // Poll every 30 seconds for live updates to codes and new reviews
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleGenerateCode = async () => {
     setIsGenerating(true);
     setError('');
-    setCopied(false);
     
     try {
       const response = await axios.post('/api/reviews/generate-code');
-      setGeneratedCode(response.data.code);
+      setActiveCodes(prev => [{ code: response.data.code, _id: Date.now() }, ...prev]);
     } catch (err) {
-      setError('Failed to generate code. Check server connection.');
+      setError(t('error_generate_failed') || 'Failed to generate code.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(generatedCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (codeString) => {
+    navigator.clipboard.writeText(codeString);
+    setCopiedCode(codeString);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleDeleteReview = async (id) => {
+    if (!window.confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا التقييم؟' : 'Permanently delete this review?')) return;
+    try {
+      await axios.delete(`/api/reviews/${id}`);
+      fetchData(); // Refresh inbox
+    } catch (err) {
+      alert("Failed to delete review.");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4 font-sans text-white">
-      <div className="max-w-md w-full bg-[#141414] p-8 rounded-2xl border border-[#2a2a2a] shadow-2xl relative overflow-hidden">
+    <div className="w-full animate-fade-in-up" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="mb-8">
+        <h2 className="text-2xl md:text-3xl font-black uppercase tracking-widest text-white mb-2">
+          {lang === 'ar' ? 'بوابة الموظفين والتقييمات' : 'Staff Portal & Reviews'}
+        </h2>
+        <div className="w-16 h-1 bg-[#d32f2f] rounded-full"></div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-black uppercase tracking-widest mb-2">
-            STAFF <span className="text-[#d32f2f]">PORTAL</span>
-          </h2>
-          <p className="text-[#a3a3a3] text-sm">Authorized Personnel Only</p>
-        </div>
+        {/* LEFT COLUMN: Code Generator */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 shadow-xl">
+            {error && <div className="bg-[#d32f2f]/10 border border-[#d32f2f]/50 text-[#d32f2f] p-3 rounded-lg text-sm mb-6">{error}</div>}
 
-        {!isAuthenticated ? (
-          <form onSubmit={handleLogin} className="space-y-6 animate-fade-in-up">
-            {error && <div className="bg-[#d32f2f]/10 border border-[#d32f2f]/50 text-[#d32f2f] p-3 rounded-lg text-sm text-center">{error}</div>}
-            
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#555]">
-                <Lock size={18} />
-              </div>
-              <input 
-                type="password" 
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="Enter Staff PIN"
-                className="w-full bg-[#0a0a0a] border border-[#333] text-white pl-12 pr-4 py-3.5 rounded-lg focus:outline-none focus:border-[#d32f2f] tracking-widest font-mono"
-                required
-              />
+            <div className="text-start mb-6">
+              <p className="text-[#a3a3a3] text-[10px] uppercase font-bold tracking-wider mb-4 px-1 flex items-center gap-2">
+                <KeyRound size={14} className="text-blue-400" />
+                {t('active_code_label') || 'Active Codes'} ({activeCodes.length})
+              </p>
+              
+              {activeCodes.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4 overflow-y-auto max-h-[300px] custom-scrollbar pb-2 pr-1">
+                  {activeCodes.map((item) => (
+                    <div key={item._id} className="bg-[#0a0a0a] border border-[#333] rounded-xl p-4 flex flex-col items-center justify-center h-[120px] group hover:border-[#d32f2f] transition-all relative">
+                      <p className="text-lg font-black tracking-widest font-mono text-white mb-3" dir="ltr">
+                        {item.code}
+                      </p>
+                      <button 
+                        onClick={() => handleCopy(item.code)}
+                        className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all border ${
+                          copiedCode === item.code 
+                            ? 'bg-green-500/20 border-green-500/50 text-green-500' 
+                            : 'bg-[#1a1a1a] hover:bg-[#333] border-[#333] text-white'
+                        }`}
+                      >
+                        {copiedCode === item.code ? <><CheckCircle2 size={12}/> {t('copied_btn') || 'Copied'}</> : <><Copy size={12}/> {t('copy_code_btn') || 'Copy'}</>}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-xl p-8 text-[#555] flex flex-col items-center justify-center">
+                  <KeyRound size={24} className="mb-3 opacity-50" />
+                  <p className="text-xs uppercase tracking-wider font-bold">{t('no_active_code') || 'No Active Codes'}</p>
+                </div>
+              )}
             </div>
-            
-            <button className="w-full bg-[#d32f2f] text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-white hover:text-black transition-all">
-              Access System
-            </button>
-          </form>
-        ) : (
-          <div className="space-y-6 animate-fade-in text-center">
-            <div className="flex justify-center mb-2">
-              <div className="w-12 h-12 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center border border-green-500/30">
-                <Unlock size={20} />
-              </div>
-            </div>
-            <h3 className="font-bold text-lg mb-6">Review Code Generator</h3>
-            
-            {error && <div className="bg-[#d32f2f]/10 border border-[#d32f2f]/50 text-[#d32f2f] p-3 rounded-lg text-sm mb-4">{error}</div>}
-
-            {generatedCode ? (
-              <div className="bg-[#0a0a0a] border border-[#333] rounded-xl p-6 relative group">
-                <p className="text-[#a3a3a3] text-xs uppercase font-bold tracking-wider mb-2">Active Code (24h)</p>
-                <p className="text-4xl font-black tracking-[0.2em] font-mono text-white mb-4">{generatedCode}</p>
-                
-                <button 
-                  onClick={handleCopy}
-                  className="flex items-center justify-center gap-2 w-full bg-[#1a1a1a] hover:bg-[#333] border border-[#333] text-white py-2.5 rounded-lg font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  {copied ? <><CheckCircle2 size={16} className="text-green-500"/> Copied!</> : <><Copy size={16}/> Copy Code</>}
-                </button>
-              </div>
-            ) : (
-              <div className="bg-[#0a0a0a] border border-dashed border-[#333] rounded-xl p-8 text-[#555]">
-                <KeyRound size={32} className="mx-auto mb-3 opacity-50" />
-                <p className="text-xs uppercase tracking-wider font-bold">No active code generated</p>
-              </div>
-            )}
 
             <button 
               onClick={handleGenerateCode}
               disabled={isGenerating}
-              className="w-full bg-[#d32f2f] text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all border border-[#d32f2f]"
+              className="w-full bg-[#d32f2f] text-white py-3.5 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all border border-[#d32f2f] flex justify-center items-center gap-2"
             >
-              {isGenerating ? 'Generating...' : 'Generate New Code'}
+              {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+              {isGenerating ? (t('generating_btn') || 'Generating...') : (t('generate_new_code_btn') || 'Generate Code')}
             </button>
           </div>
-        )}
+        </div>
+
+        {/* RIGHT COLUMN: Reviews Inbox */}
+        <div className="lg:col-span-2">
+          <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6 shadow-xl h-full min-h-[500px]">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#2a2a2a]">
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <MessageSquare size={20} className="text-green-400" />
+              </div>
+              <h2 className="text-lg font-black uppercase tracking-wider">{lang === 'ar' ? 'صندوق التقييمات' : 'Client Feedback Inbox'}</h2>
+            </div>
+
+            {isLoading ? (
+              <div className="text-center py-20 text-[#555]"><Loader2 size={32} className="animate-spin mx-auto" /></div>
+            ) : reviews.length === 0 ? (
+              <div className="text-center py-20 border border-dashed border-[#333] rounded-xl text-[#555]">
+                {lang === 'ar' ? 'لا توجد تقييمات حتى الآن.' : 'No reviews received yet.'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+                {reviews.map(review => (
+                  <div key={review._id} className="bg-[#0a0a0a] border border-[#333] rounded-lg p-5 flex flex-col relative group hover:border-[#555] transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-black text-white text-base leading-tight">{review.clientName}</h4>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest ${review.memberType === 'VIP Member' ? 'text-[#d32f2f]' : 'text-[#a3a3a3]'}`}>
+                          {review.memberType}
+                        </span>
+                      </div>
+                      <div className="flex gap-1" dir="ltr">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={12} className={i < review.rating ? "text-yellow-500 fill-yellow-500" : "text-[#333]"} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-[#a3a3a3] leading-relaxed mb-4 flex-grow">"{review.text}"</p>
+                    <div className="flex justify-between items-end mt-auto pt-3 border-t border-[#222]">
+                      <span className="text-[9px] text-[#555] font-bold uppercase tracking-widest">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                      {admin?.role === 'Super Admin' && (
+                        <button 
+                          onClick={() => handleDeleteReview(review._id)} 
+                          className="text-[10px] text-red-500 hover:text-red-400 font-bold uppercase tracking-widest flex items-center gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={12} /> {lang === 'ar' ? 'حذف' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

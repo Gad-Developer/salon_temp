@@ -17,7 +17,8 @@ const orderSchema = new mongoose.Schema({
         ref: 'Product', 
         required: true 
       },
-      quantity: { type: Number, required: true, min: 1 }
+      quantity: { type: Number, required: true, min: 0 },
+      isDeleted: { type: Boolean, default: false }
     }
   ],
   totalPrice: { type: Number, required: true },
@@ -25,7 +26,13 @@ const orderSchema = new mongoose.Schema({
     type: String, 
     enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'], 
     default: 'Pending' 
-  }
+  },
+  auditLog: [{
+    action: { type: String, required: true },
+    note: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    adminName: { type: String, default: 'Admin' }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

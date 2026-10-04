@@ -7,8 +7,13 @@ const productSchema = new mongoose.Schema({
   taglineAr: { type: String },
   taglineEn: { type: String },
   price: { type: Number, required: true },
-  image: { type: String, required: true }, // Cloudinary URL
-  isActive: { type: Boolean, default: true }
+  image: { type: String, required: true },
+  isActive: { type: Boolean, default: true },
+  // NEW: Multi-branch inventory tracking
+  inventory: [{
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true },
+    stock: { type: Number, default: 0 }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

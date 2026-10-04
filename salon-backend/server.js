@@ -11,6 +11,9 @@ const branchRoutes = require('./routes/branchRoutes');
 const reviewRoutes = require('./routes/reviewsRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const authRoutes = require('./routes/authRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
@@ -46,6 +49,9 @@ app.use('/api/branches', branchRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)

@@ -1,42 +1,51 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import defaultProductImg from '../assets/temp-service.svg';
 
 const ProductCard = ({ product, lang, t }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-w-[280px] sm:min-w-[320px] lg:min-w-[350px] h-[350px] sm:h-[400px] lg:h-[450px] rounded-2xl overflow-hidden relative group cursor-pointer border border-[#2a2a2a] bg-black snap-center shrink-0">
+    <div className="w-full h-[260px] sm:h-[350px] lg:h-[400px] rounded-xl sm:rounded-2xl overflow-hidden relative group cursor-pointer border border-[#2a2a2a] bg-[#141414] transition-all hover:border-[#d32f2f]">
       
       {/* Background Image */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-[#0a0a0a]">
         <img 
-          src={product.image} 
+          src={product.image && product.image.trim() !== '' ? product.image : defaultProductImg} 
           alt={lang === 'ar' ? product.nameAr : product.nameEn} 
-          className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105 opacity-100 group-hover:opacity-90"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
           loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null; 
+            e.target.src = defaultProductImg;
+          }}
         />
       </div>
 
       {/* Floating Info Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent p-5 lg:p-6 flex flex-col justify-end transition-all duration-500">
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/70 to-transparent p-3 sm:p-5 flex flex-col justify-end">
         
-        {/* Brand Badge */}
-        <div className="absolute top-4 left-4 bg-[#d32f2f] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+        {/* Brand Badge - Positioned dynamically based on RTL/LTR */}
+        <div className={`absolute top-3 ${lang === 'ar' ? 'right-3' : 'left-3'} bg-[#d32f2f] text-white text-[8px] sm:text-[10px] font-bold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full uppercase tracking-wider shadow-lg`}>
           {product.brand}
         </div>
 
-        <div className="transition-all duration-500 translate-y-2 group-hover:translate-y-0">
-          <h3 className="text-lg lg:text-xl font-black text-white uppercase leading-tight mb-2">
+        <div className="flex flex-col justify-end mt-auto z-10">
+          <h3 className="text-xs sm:text-base lg:text-lg font-black text-white uppercase leading-tight mb-2 sm:mb-3 line-clamp-2 group-hover:text-[#d32f2f] transition-colors">
             {lang === 'ar' ? product.nameAr : product.nameEn}
           </h3>
           
-          <p className="text-[#a3a3a3] text-xs lg:text-sm mb-5 line-clamp-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-0 group-hover:h-auto">
+          {/* Tagline: Hidden on mobile to save space, visible on large screens inside hover */}
+          <p className="text-[#a3a3a3] text-xs mb-4 line-clamp-2 hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-0 group-hover:h-auto">
              {lang === 'ar' ? product.taglineAr : product.taglineEn}
           </p>
 
           <button 
-            onClick={() => navigate('/products', { state: { preselectId: product._id } })}
-            className="w-full block text-center bg-transparent border border-[#333] group-hover:border-[#d32f2f] group-hover:bg-[#d32f2f] text-white py-2 lg:py-2.5 rounded-lg font-bold text-[10px] lg:text-xs uppercase tracking-wider transition-all"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/products', { state: { preselectId: product._id } });
+            }}
+            className="w-full block text-center bg-[#1f1f1f] border border-[#333] group-hover:border-[#d32f2f] group-hover:bg-[#d32f2f] group-hover:text-white text-[#a3a3a3] py-1.5 sm:py-2.5 rounded font-bold text-[9px] sm:text-[10px] lg:text-xs uppercase tracking-wider transition-all"
           >
             {t('order_now')}
           </button>

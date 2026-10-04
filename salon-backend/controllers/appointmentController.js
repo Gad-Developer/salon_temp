@@ -41,12 +41,12 @@ exports.createAppointment = async (req, res) => {
   }
 };
 
-// GET /api/appointments (Populated with reference names for Admin Dashboard)
+// GET /api/appointments
 exports.getAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find()
       .populate('branchId', 'nameEn nameAr')
-      .populate('professionalId', 'nameEn nameAr')
+      .populate('professionalId', 'nameEn nameAr avatar') // Added avatar for UI
       .populate('packageId', 'nameEn nameAr')
       .sort({ createdAt: -1 });
       
@@ -59,28 +59,36 @@ exports.getAppointments = async (req, res) => {
 // PATCH /api/appointments/:id/status
 exports.updateAppointmentStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, note } = req.body;
+    const adminName = req.admin?.name || req.body.adminName || 'Admin';
 
     const validStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status value' });
     }
 
-    const updatedAppointment = await Appointment.findByIdAndUpdate(
-      req.params.id, 
-      { status }, 
-      { new: true }
-    ).populate('branchId', 'nameEn nameAr')
-     .populate('professionalId', 'nameEn nameAr')
-     .populate('packageId', 'nameEn nameAr');
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
 
-    if (!updatedAppointment) {
-      return res.status(404).json({ message: 'Appointment not found' });
-    }
+    // Push the audit log entry
+    appointment.status = status;
+    appointment.auditLog.push({
+      action: `Status changed to ${status}`,
+      note: note || 'No note provided',
+      adminName
+    });
 
-    res.status(200).json({ message: 'Status updated', appointment: updatedAppointment });
+    await appointment.save();
+
+    // Re-fetch with populated fields for the frontend
+    const updatedAppt = await Appointment.findById(req.params.id)
+      .populate('branchId', 'nameEn nameAr')
+      .populate('professionalId', 'nameEn nameAr avatar')
+      .populate('packageId', 'nameEn nameAr');
+
+    res.status(200).json({ message: 'Status updated', appointment: updatedAppt });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating appointment status', error: error.message });
+    res.status(500).json({ message: 'Error updating status', error: error.message });
   }
 };
 
@@ -108,5 +116,35 @@ exports.deleteAppointment = async (req, res) => {
     res.status(200).json({ message: 'Appointment deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting appointment', error: error.message });
+  }
+};
+
+// PATCH /api/appointments/:id/assign
+exports.assignProfessional = async (req, res) => {
+  try {
+    const { professionalId, note } = req.body;
+    const adminName = req.admin?.name || req.body.adminName || 'Admin';
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    appointment.professionalId = professionalId || null;
+    
+    appointment.auditLog.push({
+      action: professionalId ? `Professional Assigned/Reassigned` : `Professional Unassigned`,
+      note: note || 'No note provided',
+      adminName
+    });
+
+    await appointment.save();
+
+    const updatedAppt = await Appointment.findById(req.params.id)
+      .populate('branchId', 'nameEn nameAr')
+      .populate('professionalId', 'nameEn nameAr avatar')
+      .populate('packageId', 'nameEn nameAr');
+
+    res.status(200).json({ message: 'Professional assigned', appointment: updatedAppt });
+  } catch (error) {
+    res.status(500).json({ message: 'Error assigning professional', error: error.message });
   }
 };

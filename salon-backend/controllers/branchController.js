@@ -1,11 +1,10 @@
 const Branch = require('../models/Branch');
 
-// Get all active branches (for the frontend landing page)
+// Get branches (Admin sees all, Public sees active)
 exports.getBranches = async (req, res) => {
   try {
-    // You can remove { isActive: true } if you want the frontend to receive all and filter them itself, 
-    // but filtering here is better for performance.
-    const branches = await Branch.find({ isActive: true });
+    const filter = req.query.all === 'true' ? {} : { isActive: true };
+    const branches = await Branch.find(filter).sort({ createdAt: 1 });
     res.status(200).json(branches);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching branches', error: error.message });

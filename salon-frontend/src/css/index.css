@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --ab-black: #0a0a0a;
-  --ab-charcoal: #1c1c1c;
-  --ab-red: #d32f2f;
-  --ab-silver: #a3a3a3;
+  --ab-black: #18181b;
+  --ab-charcoal: #27272a;
+  --ab-red: #e11d48;
+  --ab-silver: #a1a1aa;
   --ab-white: #ffffff;
 }
 

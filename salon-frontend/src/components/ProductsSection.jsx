@@ -39,11 +39,11 @@ const ProductsSection = () => {
             </Link>
         </div>
 
-        {/* Horizontal Scroll Container */}
+        {/* Strict 2-Column Mobile Grid */}
         {isLoading ? (
           <div className="text-[#a3a3a3] text-center text-sm animate-pulse">Loading...</div>
         ) : products.length > 0 ? (
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 lg:gap-6 pb-8 scrollbar-hide custom-scrollbar">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
             {products.map((product) => (
               <ProductCard key={product._id} product={product} lang={lang} t={t} />
             ))}

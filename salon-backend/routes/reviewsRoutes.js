@@ -64,4 +64,15 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+// 5. Admin: Get all currently active (unused) codes
+router.get('/active-codes', async (req, res) => {
+  try {
+    // Find all unused codes, sorted newest first
+    const activeCodes = await ReviewCode.find({ isUsed: false }).sort({ createdAt: -1 });
+    res.json({ codes: activeCodes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
